@@ -36,8 +36,8 @@ public:
 
 private:
 	ofstream ofs_;
-    BlockingQueue<string> queue_;
-    thread writer_;
+	BlockingQueue<string> queue_;
+	thread writer_;
 };
 
 }
