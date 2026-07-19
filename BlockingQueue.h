@@ -2,58 +2,57 @@
 #include <mutex>
 #include <condition_variable>
 #include <optional>
-
-namespace std
-{
+#include <concepts>
 
 template<typename T>
 class BlockingQueue
 {
 public:
-	bool push(T value)
+	template <typename V>
+	requires std::constructible_from<T, V&&>
+	bool push(V&& value)
 	{
 		{
-			lock_guard<mutex> lock(m_);
+			std::lock_guard lock(m_);
 			if (stop_)
 			{
 				return false;
 			}
-			data_.push(move(value));
+			data_.emplace(std::forward<V>(value));
 		}
 		cv_.notify_one();
 		return true;
 	}
 
-	optional<T> pop()
+	std::optional<T> pop()
 	{
-		unique_lock<mutex> lock(m_);
-		cv_.wait(lock, [&]() {
+		std::unique_lock lock(m_);
+		cv_.wait(lock, [this]() {
 			return stop_ || !data_.empty();
 		});
 		
-		if (!data_.empty())
+		if (data_.empty())
 		{
-			T item = move(data_.front());
-			data_.pop();
-			return item;
+			return std::nullopt;
 		}
-		return nullopt;
+		
+		T item = std::move(data_.front());
+		data_.pop();
+		return { std::move(item) };
 	}
 	
 	void shutdown()
 	{
 		{
-			lock_guard<mutex> lock(m_);
+			std::lock_guard lock(m_);
 			stop_ = true;
 		}
 		cv_.notify_all();
 	}
     
 private:
-	mutex m_;
-	condition_variable cv_;
-	queue<T> data_;
+	std::mutex m_;
+	std::condition_variable cv_;
+	std::queue<T> data_;
 	bool stop_ = false;
 };
-
-}
