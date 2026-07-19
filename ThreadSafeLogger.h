@@ -12,7 +12,7 @@ public:
 	{
 		if (!ofs_)
 		{
-    throw std::runtime_error("Cannot open log file");
+			throw std::runtime_error("Cannot open log file");
 		}
 		
 		auto write = [this]() {
